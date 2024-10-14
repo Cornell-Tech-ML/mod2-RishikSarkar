@@ -192,7 +192,9 @@ class Permute(Function):
     def forward(ctx: Context, a: Tensor, order: Tensor) -> Tensor:
         """Permute the dimensions of the input tensor."""
         ctx.save_for_backward(order)
-        return Tensor.make(a._tensor.permute(*[int(i) for i in order]))
+        new_shape = tuple(a.shape[int(i)] for i in order)
+        permuted_data = a._tensor.permute(*[int(i) for i in order])
+        return Tensor.make(permuted_data._storage, new_shape, backend=a.backend)
 
 
 class View(Function):

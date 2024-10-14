@@ -13,10 +13,23 @@ from .tensor_data import TensorData
 
 # Comment these out if not yet implemented
 from .tensor_functions import (
-    Copy,
+    Neg,
     Inv,
-    MatMul,
+    Add,
+    All,
     Mul,
+    Sigmoid,
+    ReLU,
+    Log,
+    Exp,
+    Sum,
+    LT,
+    EQ,
+    IsClose,
+    Permute,
+    View,
+    Copy,
+    MatMul,
 )
 
 if TYPE_CHECKING:
@@ -277,5 +290,106 @@ class Tensor:
         """
         return self._tensor.shape
 
-    # Functions
-    # TODO: Implement for Task 2.3.
+    @property
+    def size(self) -> int:
+        """Return the total number of elements in the tensor."""
+        return int(operators.prod(self.shape))
+
+    @property
+    def dims(self) -> int:
+        """Return the number of dimensions of the tensor."""
+        return len(self.shape)
+
+    def add(self, b: TensorLike) -> Tensor:
+        """Add two tensors."""
+        return Add.apply(self, self._ensure_tensor(b))
+
+    def sub(self, b: TensorLike) -> Tensor:
+        """Subtract two tensors."""
+        return Add.apply(self, Neg.apply(self._ensure_tensor(b)))
+
+    def mul(self, b: TensorLike) -> Tensor:
+        """Multiply two tensors."""
+        return Mul.apply(self, self._ensure_tensor(b))
+
+    def lt(self, b: TensorLike) -> Tensor:
+        """Less than comparison."""
+        return LT.apply(self, self._ensure_tensor(b))
+
+    def eq(self, b: TensorLike) -> Tensor:
+        """Equal comparison."""
+        return EQ.apply(self, self._ensure_tensor(b))
+
+    def gt(self, b: TensorLike) -> Tensor:
+        """Greater than comparison."""
+        return LT.apply(self._ensure_tensor(b), self)
+
+    def neg(self) -> Tensor:
+        """Negate the tensor."""
+        return Neg.apply(self)
+
+    def radd(self, b: TensorLike) -> Tensor:
+        """Reverse add two tensors."""
+        return Add.apply(self._ensure_tensor(b), self)
+
+    def rmul(self, b: TensorLike) -> Tensor:
+        """Reverse multiply two tensors."""
+        return Mul.apply(self._ensure_tensor(b), self)
+
+    def all(self, dim: Optional[int] = None) -> Tensor:
+        """Return True if all elements are True."""
+        if dim is None:
+            return All.apply(self)
+        else:
+            return All.apply(self, Tensor.make([dim], (1,), backend=self.backend))
+
+    def is_close(self, b: Tensor) -> Tensor:
+        """Check if two tensors are close element-wise."""
+        return IsClose.apply(self, b)
+
+    def sigmoid(self) -> Tensor:
+        """Apply sigmoid function to the tensor."""
+        return Sigmoid.apply(self)
+
+    def relu(self) -> Tensor:
+        """Apply ReLU function to the tensor."""
+        return ReLU.apply(self)
+
+    def log(self) -> Tensor:
+        """Apply natural logarithm to the tensor."""
+        return Log.apply(self)
+
+    def exp(self) -> Tensor:
+        """Apply exponential function to the tensor."""
+        return Exp.apply(self)
+
+    def sum(self, dim: Optional[int] = None) -> Tensor:
+        """Sum the tensor along the specified dimension."""
+        if dim is None:
+            return Sum.apply(self)
+        else:
+            return Sum.apply(self, Tensor.make([dim], (1,), backend=self.backend))
+
+    def mean(self, dim: Optional[int] = None) -> Tensor:
+        """Compute the mean along the specified dimension."""
+        sum_result = self.sum(dim)
+        if dim is None:
+            return sum_result / self.size
+        else:
+            return sum_result / self.shape[dim]
+
+    def permute(self, *order: int) -> Tensor:
+        """Permute the dimensions of the tensor."""
+        return Permute.apply(
+            self, Tensor.make(list(order), (len(order),), backend=self.backend)
+        )
+
+    def view(self, *shape: int) -> Tensor:
+        """Reshape the tensor to the specified shape."""
+        return View.apply(
+            self, Tensor.make(list(shape), (len(shape),), backend=self.backend)
+        )
+
+    def zero_grad_(self) -> None:
+        """Set the gradient to None."""
+        self.grad = None
