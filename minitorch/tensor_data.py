@@ -130,8 +130,8 @@ def shape_broadcast(shape1: UserShape, shape2: UserShape) -> UserShape:
 
     """
     max_len = max(len(shape1), len(shape2))
-    shape1_padded = (1,) * (max_len - len(shape1)) + shape1
-    shape2_padded = (1,) * (max_len - len(shape2)) + shape2
+    shape1_padded = tuple([1] * (max_len - len(shape1))) + tuple(shape1)
+    shape2_padded = tuple([1] * (max_len - len(shape2))) + tuple(shape2)
 
     broadcasted_shape = []
     for dim1, dim2 in zip(shape1_padded, shape2_padded):
