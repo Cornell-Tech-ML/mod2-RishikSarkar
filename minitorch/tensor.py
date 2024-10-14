@@ -300,39 +300,39 @@ class Tensor:
         """Return the number of dimensions of the tensor."""
         return len(self.shape)
 
-    def add(self, b: TensorLike) -> Tensor:
+    def __add__(self, b: TensorLike) -> Tensor:
         """Add two tensors."""
         return Add.apply(self, self._ensure_tensor(b))
 
-    def sub(self, b: TensorLike) -> Tensor:
+    def __sub__(self, b: TensorLike) -> Tensor:
         """Subtract two tensors."""
         return Add.apply(self, Neg.apply(self._ensure_tensor(b)))
 
-    def mul(self, b: TensorLike) -> Tensor:
+    def __mul__(self, b: TensorLike) -> Tensor:
         """Multiply two tensors."""
         return Mul.apply(self, self._ensure_tensor(b))
 
-    def lt(self, b: TensorLike) -> Tensor:
+    def __lt__(self, b: TensorLike) -> Tensor:
         """Less than comparison."""
         return LT.apply(self, self._ensure_tensor(b))
 
-    def eq(self, b: TensorLike) -> Tensor:
+    def __eq__(self, b: TensorLike) -> Tensor:
         """Equal comparison."""
         return EQ.apply(self, self._ensure_tensor(b))
 
-    def gt(self, b: TensorLike) -> Tensor:
+    def __gt__(self, b: TensorLike) -> Tensor:
         """Greater than comparison."""
         return LT.apply(self._ensure_tensor(b), self)
 
-    def neg(self) -> Tensor:
+    def __neg__(self) -> Tensor:
         """Negate the tensor."""
         return Neg.apply(self)
 
-    def radd(self, b: TensorLike) -> Tensor:
+    def __radd__(self, b: TensorLike) -> Tensor:
         """Reverse add two tensors."""
         return Add.apply(self._ensure_tensor(b), self)
 
-    def rmul(self, b: TensorLike) -> Tensor:
+    def __rmul__(self, b: TensorLike) -> Tensor:
         """Reverse multiply two tensors."""
         return Mul.apply(self._ensure_tensor(b), self)
 
