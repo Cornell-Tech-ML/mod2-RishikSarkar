@@ -368,7 +368,7 @@ class Tensor:
         if dim is None:
             return Sum.apply(self)
         else:
-            return Sum.apply(self, Tensor.make([dim], (1,), backend=self.backend))
+            return Sum.apply(self, self._ensure_tensor(dim))
 
     def mean(self, dim: Optional[int] = None) -> Tensor:
         """Compute the mean along the specified dimension."""

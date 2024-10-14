@@ -7,7 +7,11 @@ from typing_extensions import Protocol
 from . import operators
 from .tensor_data import (
     shape_broadcast,
+    index_to_position,
+    to_index,
 )
+
+import numpy as np
 
 if TYPE_CHECKING:
     from .tensor import Tensor
@@ -280,29 +284,22 @@ def tensor_map(
         in_shape: Shape,
         in_strides: Strides,
     ) -> None:
-        # Get the number of dimensions
         out_dims = len(out_shape)
         in_dims = len(in_shape)
 
-        # Create index arrays for output and input
         out_index = [0] * out_dims
         in_index = [0] * in_dims
 
-        # Iterate through all elements in the output shape
         for i in range(len(out)):
-            # Calculate the input index, accounting for broadcasting
             for j in range(in_dims):
                 if in_shape[j] > 1:
                     in_index[j] = out_index[j + (out_dims - in_dims)]
 
-            # Calculate input and output positions
             in_pos = sum(in_index[k] * in_strides[k] for k in range(in_dims))
             out_pos = sum(out_index[k] * out_strides[k] for k in range(out_dims))
 
-            # Apply the function and store the result
             out[out_pos] = fn(in_storage[in_pos])
 
-            # Update the output index
             for j in range(out_dims - 1, -1, -1):
                 out_index[j] += 1
                 if out_index[j] < out_shape[j]:
@@ -353,21 +350,16 @@ def tensor_zip(
         b_shape: Shape,
         b_strides: Strides,
     ) -> None:
-        # Initialize index arrays for out, a, and b
         out_index = [0] * len(out_shape)
         a_index = [0] * len(a_shape)
         b_index = [0] * len(b_shape)
 
-        # Iterate through all elements in the output tensor
         for i in range(len(out)):
-            # Calculate the current position in a and b tensors
             a_pos = sum(a_index[j] * a_strides[j] for j in range(len(a_shape)))
             b_pos = sum(b_index[j] * b_strides[j] for j in range(len(b_shape)))
 
-            # Apply the function to the corresponding elements and store in out
             out[i] = fn(a_storage[a_pos], b_storage[b_pos])
 
-            # Update indices
             for j in range(len(out_shape) - 1, -1, -1):
                 out_index[j] += 1
                 if j < len(a_shape):
@@ -408,40 +400,22 @@ def tensor_reduce(
         a_strides: Strides,
         reduce_dim: int,
     ) -> None:
-        # Initialize indices and positions
-        out_index = [0] * len(out_shape)
-        a_index = [0] * len(a_shape)
-        out_pos = 0
-        a_pos = 0
+        out_index = np.zeros(len(out_shape), dtype=np.int32)
+        a_index = np.zeros(len(a_shape), dtype=np.int32)
 
-        # Iterate through all elements in the output tensor
         for i in range(len(out)):
-            # Initialize accumulator with the first element of the reduction dimension
-            acc = a_storage[a_pos]
+            to_index(i, out_shape, out_index)
+            out_pos = index_to_position(out_index, out_strides)
 
-            # Perform reduction along the specified dimension
+            a_index[:] = out_index[:]
+            acc = a_storage[index_to_position(a_index, a_strides)]
+
             for j in range(1, a_shape[reduce_dim]):
                 a_index[reduce_dim] = j
-                a_pos = sum(a_index[k] * a_strides[k] for k in range(len(a_shape)))
+                a_pos = index_to_position(a_index, a_strides)
                 acc = fn(acc, a_storage[a_pos])
 
-            # Store the result in the output tensor
             out[out_pos] = acc
-
-            # Update indices
-            for j in range(len(out_shape) - 1, -1, -1):
-                if j == reduce_dim:
-                    continue
-                out_index[j] += 1
-                a_index[j] = out_index[j]
-                if out_index[j] < out_shape[j]:
-                    break
-                out_index[j] = 0
-                a_index[j] = 0
-
-            # Update positions
-            out_pos = sum(out_index[k] * out_strides[k] for k in range(len(out_shape)))
-            a_pos = sum(a_index[k] * a_strides[k] for k in range(len(a_shape)))
 
     return _reduce
 
