@@ -67,17 +67,6 @@ def to_index(ordinal: int, shape: Shape, out_index: OutIndex) -> None:
         out_index : return index corresponding to position.
 
     """
-    # size = np.prod(shape)
-    # remaining = ordinal
-
-    # for i in range(len(shape) - 1, -1, -1):
-    #     dim_size = shape[i]
-    #     out_index[i] = remaining % dim_size
-    #     remaining //= dim_size
-
-    # if ordinal < 0 or ordinal >= size:
-    #     raise IndexingError(f"Ordinal {ordinal} is out of bounds for shape {shape}")
-
     stride = strides_from_shape(list(map(int, shape)))
 
     for i in range(len(stride)):

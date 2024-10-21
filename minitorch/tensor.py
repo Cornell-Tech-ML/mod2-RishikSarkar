@@ -260,7 +260,7 @@ class Tensor:
         assert h.ctx is not None
 
         x = h.last_fn._backward(h.ctx, d_output)
-        assert len(x) == len(h.inputs), f"Bug in function {h.last_fn}, {x}, {h.inputs}"
+        assert len(x) == len(h.inputs), f"Bug in function {h.last_fn}"
         return [
             (inp, inp.expand(self._ensure_tensor(d_in)))
             for inp, d_in in zip(h.inputs, x)
@@ -294,13 +294,11 @@ class Tensor:
     @property
     def size(self) -> int:
         """Return the total number of elements in the tensor."""
-        # return int(operators.prod(self.shape))
         return self._tensor.size
 
     @property
     def dims(self) -> int:
         """Return the number of dimensions of the tensor."""
-        # return len(self.shape)
         return self._tensor.dims
 
     def __add__(self, b: TensorLike) -> Tensor:
@@ -342,13 +340,11 @@ class Tensor:
     def all(self, dim: Optional[int] = None) -> Tensor:
         """Return True if all elements are True."""
         if dim is None:
-            # return All.apply(self)
             return All.apply(
                 self.contiguous().view(int(operators.prod(self.shape))),
                 self._ensure_tensor(0),
             )
         else:
-            # return All.apply(self, Tensor.make([dim], (1,), backend=self.backend))
             return All.apply(self, self._ensure_tensor(dim))
 
     def is_close(self, b: Tensor) -> Tensor:
@@ -374,7 +370,6 @@ class Tensor:
     def sum(self, dim: Optional[int] = None) -> Tensor:
         """Sum the tensor along the specified dimension."""
         if dim is None:
-            # return Sum.apply(self)
             return Sum.apply(
                 self.contiguous().view(int(operators.prod(self.shape))),
                 self._ensure_tensor(0),
