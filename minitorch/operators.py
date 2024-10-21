@@ -334,6 +334,24 @@ def relu_back(a: float, grad: float) -> float:
     return grad * (1.0 if a > 0 else 0)
 
 
+def sigmoid_back(a: float, b: float) -> float:
+    """Computes the derivative of sigmoid times a second arg
+
+    Args:
+    ----
+        a: A float
+        b: A float
+    ----
+
+    Returns:
+    -------
+        The derivative of sigmoid times a second arg
+    -------
+
+    """
+    return mul(mul(sigmoid(a), add(1, neg(sigmoid(a)))), b)
+
+
 # ## Task 0.3
 
 # Small practice library of elementary higher-order functions.
