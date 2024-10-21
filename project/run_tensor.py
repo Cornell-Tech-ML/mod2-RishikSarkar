@@ -25,6 +25,7 @@ class Network(minitorch.Module):
 
 class Linear(minitorch.Module):
     def __init__(self, in_features, out_features):
+        super().__init__()
         self.weights = RParam(in_features, out_features)
         self.bias = RParam(out_features)
         self.out_features = out_features
