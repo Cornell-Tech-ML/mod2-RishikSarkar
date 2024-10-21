@@ -9,6 +9,7 @@ from .tensor_data import (
     shape_broadcast,
     index_to_position,
     to_index,
+    broadcast_index,
 )
 
 import numpy as np
@@ -96,6 +97,7 @@ class TensorBackend:
         self.relu_back_zip = ops.zip(operators.relu_back)
         self.log_back_zip = ops.zip(operators.log_back)
         self.inv_back_zip = ops.zip(operators.inv_back)
+        self.sigmoid_back_zip = ops.zip(operators.sigmoid_back)
 
         # Reduce
         self.add_reduce = ops.reduce(operators.add, 0.0)
@@ -287,24 +289,17 @@ def tensor_map(
         out_dims = len(out_shape)
         in_dims = len(in_shape)
 
-        out_index = [0] * out_dims
-        in_index = [0] * in_dims
+        for ordinal in range(len(out)):
+            out_index = np.zeros(out_dims, dtype=np.int32)
+            to_index(ordinal, out_shape, out_index)
 
-        for i in range(len(out)):
-            for j in range(in_dims):
-                if in_shape[j] > 1:
-                    in_index[j] = out_index[j + (out_dims - in_dims)]
+            in_index = np.zeros(in_dims, dtype=np.int32)
+            broadcast_index(out_index, out_shape, in_shape, in_index)
 
-            in_pos = sum(in_index[k] * in_strides[k] for k in range(in_dims))
-            out_pos = sum(out_index[k] * out_strides[k] for k in range(out_dims))
+            in_position = index_to_position(in_index, in_strides)
+            out[ordinal] = fn(in_storage[in_position])
 
-            out[out_pos] = fn(in_storage[in_pos])
-
-            for j in range(out_dims - 1, -1, -1):
-                out_index[j] += 1
-                if out_index[j] < out_shape[j]:
-                    break
-                out_index[j] = 0
+        return
 
     return _map
 
@@ -350,25 +345,25 @@ def tensor_zip(
         b_shape: Shape,
         b_strides: Strides,
     ) -> None:
-        out_index = [0] * len(out_shape)
-        a_index = [0] * len(a_shape)
-        b_index = [0] * len(b_shape)
+        out_dims = len(out_shape)
+        a_dims = len(a_shape)
+        b_dims = len(b_shape)
 
-        for i in range(len(out)):
-            a_pos = sum(a_index[j] * a_strides[j] for j in range(len(a_shape)))
-            b_pos = sum(b_index[j] * b_strides[j] for j in range(len(b_shape)))
+        for ordinal in range(len(out)):
+            out_index = np.zeros(out_dims, dtype=np.int32)
+            to_index(ordinal, out_shape, out_index)
 
-            out[i] = fn(a_storage[a_pos], b_storage[b_pos])
+            a_index = np.zeros(a_dims, dtype=np.int32)
+            b_index = np.zeros(b_dims, dtype=np.int32)
+            broadcast_index(out_index, out_shape, a_shape, a_index)
+            broadcast_index(out_index, out_shape, b_shape, b_index)
 
-            for j in range(len(out_shape) - 1, -1, -1):
-                out_index[j] += 1
-                if j < len(a_shape):
-                    a_index[j] = out_index[j] % a_shape[j]
-                if j < len(b_shape):
-                    b_index[j] = out_index[j] % b_shape[j]
-                if out_index[j] < out_shape[j]:
-                    break
-                out_index[j] = 0
+            a_pos = index_to_position(a_index, a_strides)
+            b_pos = index_to_position(b_index, b_strides)
+
+            out[ordinal] = fn(a_storage[a_pos], b_storage[b_pos])
+
+        return
 
     return _zip
 
@@ -400,22 +395,18 @@ def tensor_reduce(
         a_strides: Strides,
         reduce_dim: int,
     ) -> None:
-        out_index = np.zeros(len(out_shape), dtype=np.int32)
-        a_index = np.zeros(len(a_shape), dtype=np.int32)
+        out_dims = len(out_shape)
+        a_dims = len(a_shape)
 
-        for i in range(len(out)):
-            to_index(i, out_shape, out_index)
+        for i in range(len(a_storage)):
+            a_index = np.zeros(a_dims, dtype=np.int32)
+            to_index(i, a_shape, a_index)
+
+            out_index = np.zeros(out_dims, dtype=np.int32)
+            broadcast_index(a_index, a_shape, out_shape, out_index)
+
             out_pos = index_to_position(out_index, out_strides)
-
-            a_index[:] = out_index[:]
-            acc = a_storage[index_to_position(a_index, a_strides)]
-
-            for j in range(1, a_shape[reduce_dim]):
-                a_index[reduce_dim] = j
-                a_pos = index_to_position(a_index, a_strides)
-                acc = fn(acc, a_storage[a_pos])
-
-            out[out_pos] = acc
+            out[out_pos] = fn(out[out_pos], a_storage[i])
 
     return _reduce
 

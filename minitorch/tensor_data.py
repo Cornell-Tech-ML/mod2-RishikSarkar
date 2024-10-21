@@ -51,7 +51,7 @@ def index_to_position(index: Index, strides: Strides) -> int:
     for i, stride in zip(index, strides):
         position += i * stride
 
-    return position
+    return int(position)
 
 
 def to_index(ordinal: int, shape: Shape, out_index: OutIndex) -> None:
@@ -67,16 +67,22 @@ def to_index(ordinal: int, shape: Shape, out_index: OutIndex) -> None:
         out_index : return index corresponding to position.
 
     """
-    size = np.prod(shape)
-    remaining = ordinal
+    # size = np.prod(shape)
+    # remaining = ordinal
 
-    for i in range(len(shape) - 1, -1, -1):
-        dim_size = shape[i]
-        out_index[i] = remaining % dim_size
-        remaining //= dim_size
+    # for i in range(len(shape) - 1, -1, -1):
+    #     dim_size = shape[i]
+    #     out_index[i] = remaining % dim_size
+    #     remaining //= dim_size
 
-    if ordinal < 0 or ordinal >= size:
-        raise IndexingError(f"Ordinal {ordinal} is out of bounds for shape {shape}")
+    # if ordinal < 0 or ordinal >= size:
+    #     raise IndexingError(f"Ordinal {ordinal} is out of bounds for shape {shape}")
+
+    stride = strides_from_shape(list(map(int, shape)))
+
+    for i in range(len(stride)):
+        out_index[i] = ordinal // stride[i]
+        ordinal %= stride[i]
 
 
 def broadcast_index(
@@ -100,16 +106,19 @@ def broadcast_index(
         None
 
     """
-    padded_shape = np.ones(len(big_shape), dtype=np.int32)
-    padded_shape[-len(shape) :] = shape
+    big_shape_offset = len(big_shape) - len(shape)
 
-    for i in range(len(big_shape)):
-        if padded_shape[i] == 1:
-            out_index[i - (len(big_shape) - len(shape))] = 0
+    for i in range(len(shape)):
+        big_i = big_shape_offset + i
+
+        if big_shape[big_i] == shape[i]:
+            out_index[i] = big_index[big_i]
+        elif shape[i] == 1:
+            out_index[i] = 0
         else:
-            out_index[i - (len(big_shape) - len(shape))] = big_index[i]
-
-    out_index = out_index[-len(shape) :]
+            raise IndexingError(
+                f"Cannot broadcast index from shape {big_shape} to shape {shape}"
+            )
 
 
 def shape_broadcast(shape1: UserShape, shape2: UserShape) -> UserShape:
@@ -135,8 +144,12 @@ def shape_broadcast(shape1: UserShape, shape2: UserShape) -> UserShape:
 
     broadcasted_shape = []
     for dim1, dim2 in zip(shape1_padded, shape2_padded):
-        if dim1 == 1 or dim2 == 1 or dim1 == dim2:
-            broadcasted_shape.append(max(dim1, dim2))
+        if dim1 == 1:
+            broadcasted_shape.append(dim2)
+        elif dim2 == 1:
+            broadcasted_shape.append(dim1)
+        elif dim1 == dim2:
+            broadcasted_shape.append(dim1)
         else:
             raise IndexingError(f"Cannot broadcast shapes {shape1} and {shape2}")
 
@@ -288,11 +301,9 @@ class TensorData:
             range(len(self.shape))
         ), f"Must give a position to each dimension. Shape: {self.shape} Order: {order}"
 
-        return TensorData(
-            self._storage,
-            tuple(self.shape[i] for i in order),
-            tuple(self._strides[i] for i in order),
-        )
+        new_shape = [self.shape[order[i]] for i in range(len(order))]
+        new_stride = [self.strides[order[i]] for i in range(len(order))]
+        return TensorData(self._storage, tuple(new_shape), tuple(new_stride))
 
     def to_string(self) -> str:
         """Convert to string"""

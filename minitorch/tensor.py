@@ -30,6 +30,7 @@ from .tensor_functions import (
     View,
     Copy,
     MatMul,
+    tensor,
 )
 
 if TYPE_CHECKING:
@@ -259,7 +260,7 @@ class Tensor:
         assert h.ctx is not None
 
         x = h.last_fn._backward(h.ctx, d_output)
-        assert len(x) == len(h.inputs), f"Bug in function {h.last_fn}"
+        assert len(x) == len(h.inputs), f"Bug in function {h.last_fn}, {x}, {h.inputs}"
         return [
             (inp, inp.expand(self._ensure_tensor(d_in)))
             for inp, d_in in zip(h.inputs, x)
@@ -293,12 +294,14 @@ class Tensor:
     @property
     def size(self) -> int:
         """Return the total number of elements in the tensor."""
-        return int(operators.prod(self.shape))
+        # return int(operators.prod(self.shape))
+        return self._tensor.size
 
     @property
     def dims(self) -> int:
         """Return the number of dimensions of the tensor."""
-        return len(self.shape)
+        # return len(self.shape)
+        return self._tensor.dims
 
     def __add__(self, b: TensorLike) -> Tensor:
         """Add two tensors."""
@@ -306,7 +309,7 @@ class Tensor:
 
     def __sub__(self, b: TensorLike) -> Tensor:
         """Subtract two tensors."""
-        return Add.apply(self, Neg.apply(self._ensure_tensor(b)))
+        return Add.apply(self, -self._ensure_tensor(b))
 
     def __mul__(self, b: TensorLike) -> Tensor:
         """Multiply two tensors."""
@@ -339,9 +342,14 @@ class Tensor:
     def all(self, dim: Optional[int] = None) -> Tensor:
         """Return True if all elements are True."""
         if dim is None:
-            return All.apply(self)
+            # return All.apply(self)
+            return All.apply(
+                self.contiguous().view(int(operators.prod(self.shape))),
+                self._ensure_tensor(0),
+            )
         else:
-            return All.apply(self, Tensor.make([dim], (1,), backend=self.backend))
+            # return All.apply(self, Tensor.make([dim], (1,), backend=self.backend))
+            return All.apply(self, self._ensure_tensor(dim))
 
     def is_close(self, b: Tensor) -> Tensor:
         """Check if two tensors are close element-wise."""
@@ -366,29 +374,30 @@ class Tensor:
     def sum(self, dim: Optional[int] = None) -> Tensor:
         """Sum the tensor along the specified dimension."""
         if dim is None:
-            return Sum.apply(self)
+            # return Sum.apply(self)
+            return Sum.apply(
+                self.contiguous().view(int(operators.prod(self.shape))),
+                self._ensure_tensor(0),
+            )
         else:
             return Sum.apply(self, self._ensure_tensor(dim))
 
     def mean(self, dim: Optional[int] = None) -> Tensor:
         """Compute the mean along the specified dimension."""
-        sum_result = self.sum(dim)
         if dim is None:
-            return sum_result / self.size
+            return Mul.apply(self.sum(), Inv.apply(self._ensure_tensor(self.size)))
         else:
-            return sum_result / self.shape[dim]
+            return Mul.apply(
+                self.sum(dim), Inv.apply(self._ensure_tensor(self.shape[dim]))
+            )
 
     def permute(self, *order: int) -> Tensor:
         """Permute the dimensions of the tensor."""
-        return Permute.apply(
-            self, Tensor.make(list(order), (len(order),), backend=self.backend)
-        )
+        return Permute.apply(self, tensor(list(order)))
 
     def view(self, *shape: int) -> Tensor:
         """Reshape the tensor to the specified shape."""
-        return View.apply(
-            self, Tensor.make(list(shape), (len(shape),), backend=self.backend)
-        )
+        return View.apply(self, tensor(list(shape)))
 
     def zero_grad_(self) -> None:
         """Set the gradient to None."""
