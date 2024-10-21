@@ -105,10 +105,10 @@ class All(Function):
     @staticmethod
     def forward(ctx: Context, a: Tensor, dim: Optional[Tensor] = None) -> Tensor:
         """Return 1 if all are true"""
-        # if dim is not None:
-        return a.f.mul_reduce(a, int(dim.item()))
-        # else:
-        #     return a.f.mul_reduce(a.contiguous().view(int(operators.prod(a.shape))), 0)
+        if dim is not None:
+            return a.f.mul_reduce(a, int(dim.item()))
+        else:
+            return a.f.mul_reduce(a.contiguous().view(int(operators.prod(a.shape))), 0)
 
 
 class Mul(Function):
@@ -207,7 +207,10 @@ class Sum(Function):
         #     )
         # else:
         #     return a.backend.add_reduce(a, int(dim.item()))
-        return a.f.add_reduce(a, int(dim.item()))
+        if dim is not None:
+            return a.f.add_reduce(a, int(dim.item()))
+        else:
+            return a.f.add_reduce(a.contiguous().view(int(operators.prod(a.shape))), 0)
 
     @staticmethod
     def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, Optional[float]]:
