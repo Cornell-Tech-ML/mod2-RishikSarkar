@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import random
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -103,12 +103,9 @@ class Add(Function):
 
 class All(Function):
     @staticmethod
-    def forward(ctx: Context, a: Tensor, dim: Optional[Tensor] = None) -> Tensor:
+    def forward(ctx: Context, a: Tensor, dim: Tensor) -> Tensor:
         """Return 1 if all are true"""
-        if dim is not None:
-            return a.f.mul_reduce(a, int(dim.item()))
-        else:
-            return a.f.mul_reduce(a.contiguous().view(int(operators.prod(a.shape))), 0)
+        return a.f.mul_reduce(a, int(dim.item()))
 
 
 class Mul(Function):
@@ -198,7 +195,7 @@ class Exp(Function):
 
 class Sum(Function):
     @staticmethod
-    def forward(ctx: Context, a: Tensor, dim: Optional[Tensor] = None) -> Tensor:
+    def forward(ctx: Context, t1: Tensor, dim: Tensor) -> Tensor:
         """Sum the input tensor along the specified dimension."""
         # ctx.save_for_backward(a.shape, dim)
         # if dim is None:
@@ -207,13 +204,10 @@ class Sum(Function):
         #     )
         # else:
         #     return a.backend.add_reduce(a, int(dim.item()))
-        if dim is not None:
-            return a.f.add_reduce(a, int(dim.item()))
-        else:
-            return a.f.add_reduce(a.contiguous().view(int(operators.prod(a.shape))), 0)
+        return t1.f.add_reduce(t1, int(dim.item()))
 
     @staticmethod
-    def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, Optional[float]]:
+    def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, float]:
         """Compute the gradient for the sum operation."""
         return (
             grad_output,
@@ -316,7 +310,7 @@ class Permute(Function):
         # )
 
     @staticmethod
-    def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, None]:
+    def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, float]:
         """Backward pass for permute operation."""
         (order,) = ctx.saved_values
         order_list = list(map(int, order._tensor._storage))
